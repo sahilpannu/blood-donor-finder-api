@@ -1,3 +1,7 @@
+app.get("/", (req, res) => {
+  res.send("🩸 Blood Donor Finder API is running. Use /api/donors");
+});
+
 const express = require("express");
 
 const app = express();
