@@ -1,5 +1,3 @@
-require("dotenv").config();
-
 const express = require("express");
 const mongoose = require("mongoose");
 
@@ -10,6 +8,7 @@ app.use(express.urlencoded({ extended: true }));
 
 /* ================================
    MONGODB CONNECTION
+   (Render provides MONGO_URI)
 ================================ */
 mongoose
   .connect(process.env.MONGO_URI)
@@ -167,14 +166,10 @@ app.get("/register", (req, res) => {
 
     <select name="bloodGroup" required>
       <option value="">Select Blood Group</option>
-      <option value="A+">A+</option>
-      <option value="A-">A-</option>
-      <option value="B+">B+</option>
-      <option value="B-">B-</option>
-      <option value="AB+">AB+</option>
-      <option value="AB-">AB-</option>
-      <option value="O+">O+</option>
-      <option value="O-">O-</option>
+      <option>A+</option><option>A-</option>
+      <option>B+</option><option>B-</option>
+      <option>AB+</option><option>AB-</option>
+      <option>O+</option><option>O-</option>
     </select>
 
     <input name="city" placeholder="City" required />
@@ -240,17 +235,6 @@ app.get("/donors", (req, res) => {
       padding: 30px;
     }
     h2 { text-align: center; }
-    .filters {
-      display: flex;
-      gap: 20px;
-      justify-content: center;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-    select, button {
-      padding: 10px;
-      font-size: 16px;
-    }
     table {
       width: 100%;
       max-width: 900px;
@@ -272,19 +256,6 @@ app.get("/donors", (req, res) => {
 
 <h2>🩸 Registered Blood Donors</h2>
 
-<div class="filters">
-  <select id="blood">
-    <option value="">All Blood Groups</option>
-    <option>A+</option><option>A-</option>
-    <option>B+</option><option>B-</option>
-    <option>AB+</option><option>AB-</option>
-    <option>O+</option><option>O-</option>
-  </select>
-
-  <input id="city" placeholder="City" />
-  <button onclick="loadDonors()">Search</button>
-</div>
-
 <table>
   <thead>
     <tr>
@@ -299,16 +270,7 @@ app.get("/donors", (req, res) => {
 
 <script>
 async function loadDonors() {
-  const blood = document.getElementById("blood").value;
-  const city = document.getElementById("city").value;
-
-  let url = "/api/donors";
-  const params = [];
-  if (blood) params.push("bloodGroup=" + blood);
-  if (city) params.push("city=" + city);
-  if (params.length) url += "?" + params.join("&");
-
-  const res = await fetch(url);
+  const res = await fetch("/api/donors");
   const donors = await res.json();
 
   const body = document.getElementById("tableBody");
@@ -350,12 +312,7 @@ app.post("/api/donors", async (req, res) => {
 });
 
 app.get("/api/donors", async (req, res) => {
-  const { bloodGroup, city } = req.query;
-  const filter = {};
-  if (bloodGroup) filter.bloodGroup = bloodGroup;
-  if (city) filter.city = city;
-
-  const donors = await Donor.find(filter);
+  const donors = await Donor.find();
   res.json(donors);
 });
 
@@ -363,5 +320,5 @@ app.get("/api/donors", async (req, res) => {
    SERVER
 ================================ */
 app.listen(3000, () => {
-  console.log("Server running on http://localhost:3000");
+  console.log("Server running");
 });
