@@ -1,15 +1,18 @@
-const express = require("express"); // 1️⃣ express import
+const express = require("express");
+const app = express();
 
-const app = express();              // 2️⃣ app initialize
+app.use(express.json());
 
-app.use(express.json());            // 3️⃣ middleware
-
-// 4️⃣ Home route (optional but safe)
+/* ================================
+   HOME ROUTE
+================================ */
 app.get("/", (req, res) => {
   res.send("🩸 Blood Donor Finder API is running. Use /api/donors");
 });
 
-// 5️⃣ In-memory donor database
+/* ================================
+   IN-MEMORY DATABASE
+================================ */
 let donors = [
   {
     id: 1,
@@ -20,49 +23,97 @@ let donors = [
   }
 ];
 
-// 6️⃣ Register donor
+/* ================================
+   VALIDATION LOGIC
+================================ */
+const validBloodGroups = [
+  "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"
+];
+
+function validateDonor({ name, bloodGroup, city, phone }) {
+  if (!name || name.trim() === "") {
+    return "Name is required";
+  }
+
+  if (!city || city.trim() === "") {
+    return "City is required";
+  }
+
+  if (!bloodGroup || !validBloodGroups.includes(bloodGroup)) {
+    return "Invalid blood group";
+  }
+
+  if (!phone || !/^[0-9]{10}$/.test(phone)) {
+    return "Phone number must be 10 digits";
+  }
+
+  return null;
+}
+
+/* ================================
+   POST: REGISTER DONOR
+================================ */
 app.post("/api/donors", (req, res) => {
+  const error = validateDonor(req.body);
+
+  if (error) {
+    return res.status(400).json({
+      success: false,
+      message: error
+    });
+  }
+
   const newDonor = {
     id: donors.length + 1,
-    name: req.body.name,
+    name: req.body.name.trim(),
     bloodGroup: req.body.bloodGroup,
-    city: req.body.city,
+    city: req.body.city.trim(),
     phone: req.body.phone
   };
 
   donors.push(newDonor);
-  res.status(201).json(newDonor);
+
+  res.status(201).json({
+    success: true,
+    donor: newDonor
+  });
 });
 
-// 7️⃣ Search donors
+/* ================================
+   GET: SEARCH DONORS
+================================ */
 app.get("/api/donors", (req, res) => {
   const { bloodGroup, city } = req.query;
-
   let result = donors;
 
   if (bloodGroup) {
-    result = result.filter(d =>
-      d.bloodGroup.toLowerCase() === bloodGroup.toLowerCase()
+    result = result.filter(
+      d => d.bloodGroup.toLowerCase() === bloodGroup.toLowerCase()
     );
   }
 
   if (city) {
-    result = result.filter(d =>
-      d.city.toLowerCase() === city.toLowerCase()
+    result = result.filter(
+      d => d.city.toLowerCase() === city.toLowerCase()
     );
   }
 
   res.json(result);
 });
 
-// 8️⃣ Delete donor
+/* ================================
+   DELETE: REMOVE DONOR
+================================ */
 app.delete("/api/donors/:id", (req, res) => {
   const id = parseInt(req.params.id);
   donors = donors.filter(d => d.id !== id);
-  res.json({ message: "Donor removed" });
+
+  res.json({ message: "Donor removed successfully" });
 });
 
-// 9️⃣ Start server (ALWAYS LAST)
+/* ================================
+   START SERVER
+================================ */
 app.listen(3000, () => {
   console.log("Server running on http://localhost:3000");
 });
