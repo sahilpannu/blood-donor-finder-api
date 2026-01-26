@@ -8,7 +8,6 @@ app.use(express.urlencoded({ extended: true }));
 
 /* ================================
    MONGODB CONNECTION
-   (Render provides MONGO_URI)
 ================================ */
 mongoose
   .connect(process.env.MONGO_URI)
@@ -19,10 +18,10 @@ mongoose
    DONOR MODEL
 ================================ */
 const donorSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  bloodGroup: { type: String, required: true },
-  city: { type: String, required: true },
-  phone: { type: String, required: true },
+  name: String,
+  bloodGroup: String,
+  city: String,
+  phone: String,
 });
 
 const Donor = mongoose.model("Donor", donorSchema);
@@ -35,15 +34,15 @@ const validBloodGroups = [
 ];
 
 function validateDonor(d) {
-  if (!d.name || d.name.trim() === "") return "Name is required";
-  if (!d.city || d.city.trim() === "") return "City is required";
+  if (!d.name) return "Name is required";
   if (!validBloodGroups.includes(d.bloodGroup)) return "Invalid blood group";
+  if (!d.city) return "City is required";
   if (!/^[0-9]{10}$/.test(d.phone)) return "Phone must be 10 digits";
   return null;
 }
 
 /* ================================
-   LANDING PAGE
+   HOME PAGE
 ================================ */
 app.get("/", (req, res) => {
   res.send(`
@@ -54,28 +53,23 @@ app.get("/", (req, res) => {
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #fff;
       display: flex;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
+      background: #fff;
     }
     .container {
       text-align: center;
       max-width: 700px;
     }
     h1 { font-size: 42px; }
-    p {
-      font-size: 18px;
-      color: #333;
-      line-height: 1.6;
-    }
+    p { font-size: 18px; }
     .buttons {
       margin-top: 40px;
       display: flex;
       gap: 40px;
       justify-content: center;
-      flex-wrap: wrap;
     }
     a {
       text-decoration: none;
@@ -92,10 +86,9 @@ app.get("/", (req, res) => {
   <div class="container">
     <h1>🩸 Blood Donor Finder</h1>
     <p>
-      A public-use platform to help people find blood donors
-      quickly by blood group and city during medical emergencies.
+      A public-use platform to find blood donors quickly
+      during medical emergencies.
     </p>
-
     <div class="buttons">
       <a class="register" href="/register">Register as a Donor</a>
       <a class="view" href="/donors">View Donors</a>
@@ -103,11 +96,11 @@ app.get("/", (req, res) => {
   </div>
 </body>
 </html>
-  `);
+`);
 });
 
 /* ================================
-   REGISTER PAGE
+   REGISTER PAGE (THANK YOU + REDIRECT)
 ================================ */
 app.get("/register", (req, res) => {
   res.send(`
@@ -124,15 +117,14 @@ app.get("/register", (req, res) => {
       align-items: center;
       min-height: 100vh;
     }
-    .form-box {
+    .box {
       background: #fff;
       padding: 30px;
       border-radius: 8px;
-      width: 100%;
-      max-width: 400px;
+      width: 420px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      text-align: center;
     }
-    h2 { text-align: center; }
     input, select {
       width: 100%;
       padding: 12px;
@@ -143,22 +135,20 @@ app.get("/register", (req, res) => {
       width: 100%;
       padding: 14px;
       font-size: 18px;
-      font-weight: bold;
       background: #e63946;
       color: #fff;
       border: none;
       cursor: pointer;
     }
     .msg {
-      margin-top: 15px;
-      text-align: center;
+      margin-top: 20px;
       font-weight: bold;
     }
   </style>
 </head>
 <body>
 
-<div class="form-box">
+<div class="box" id="box">
   <h2>🩸 Register as a Donor</h2>
 
   <form id="donorForm">
@@ -183,6 +173,7 @@ app.get("/register", (req, res) => {
 
 <script>
 const form = document.getElementById("donorForm");
+const box = document.getElementById("box");
 const msg = document.getElementById("msg");
 
 form.addEventListener("submit", async (e) => {
@@ -204,9 +195,24 @@ form.addEventListener("submit", async (e) => {
   const result = await res.json();
 
   if (result.success) {
-    msg.style.color = "green";
-    msg.innerText = "✅ Donor registered successfully";
-    form.reset();
+    let seconds = 5;
+
+    box.innerHTML = \`
+      <h2>✅ Thank You!</h2>
+      <p>You are successfully registered as a blood donor.</p>
+      <p>Redirecting to home page in <b id="timer">5</b> seconds...</p>
+    \`;
+
+    const timer = document.getElementById("timer");
+
+    const interval = setInterval(() => {
+      seconds--;
+      timer.innerText = seconds;
+      if (seconds === 0) {
+        clearInterval(interval);
+        window.location.href = "/";
+      }
+    }, 1000);
   } else {
     msg.style.color = "red";
     msg.innerText = "❌ " + result.message;
@@ -216,25 +222,31 @@ form.addEventListener("submit", async (e) => {
 
 </body>
 </html>
-  `);
+`);
 });
 
 /* ================================
    VIEW DONORS PAGE
 ================================ */
-app.get("/donors", (req, res) => {
+app.get("/donors", async (req, res) => {
+  const donors = await Donor.find();
+
+  let rows = donors.map(d => `
+    <tr>
+      <td>${d.name}</td>
+      <td>${d.bloodGroup}</td>
+      <td>${d.city}</td>
+      <td>${d.phone}</td>
+    </tr>
+  `).join("");
+
   res.send(`
 <!DOCTYPE html>
 <html>
 <head>
   <title>View Donors</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #fff;
-      padding: 30px;
-    }
-    h2 { text-align: center; }
+    body { font-family: Arial; padding: 30px; }
     table {
       width: 100%;
       max-width: 900px;
@@ -248,72 +260,37 @@ app.get("/donors", (req, res) => {
     }
     th {
       background: #e63946;
-      color: #fff;
+      color: white;
     }
   </style>
 </head>
 <body>
-
-<h2>🩸 Registered Blood Donors</h2>
-
-<table>
-  <thead>
+  <h2 style="text-align:center;">🩸 Registered Donors</h2>
+  <table>
     <tr>
       <th>Name</th>
       <th>Blood Group</th>
       <th>City</th>
       <th>Phone</th>
     </tr>
-  </thead>
-  <tbody id="tableBody"></tbody>
-</table>
-
-<script>
-async function loadDonors() {
-  const res = await fetch("/api/donors");
-  const donors = await res.json();
-
-  const body = document.getElementById("tableBody");
-  body.innerHTML = "";
-
-  donors.forEach(d => {
-    body.innerHTML += \`
-      <tr>
-        <td>\${d.name}</td>
-        <td>\${d.bloodGroup}</td>
-        <td>\${d.city}</td>
-        <td>\${d.phone}</td>
-      </tr>
-    \`;
-  });
-}
-
-loadDonors();
-</script>
-
+    ${rows}
+  </table>
 </body>
 </html>
-  `);
+`);
 });
 
 /* ================================
-   API ROUTES
+   API
 ================================ */
 app.post("/api/donors", async (req, res) => {
   const error = validateDonor(req.body);
-  if (error) {
-    return res.status(400).json({ success: false, message: error });
-  }
+  if (error) return res.status(400).json({ success: false, message: error });
 
   const donor = new Donor(req.body);
   await donor.save();
 
-  res.json({ success: true, donor });
-});
-
-app.get("/api/donors", async (req, res) => {
-  const donors = await Donor.find();
-  res.json(donors);
+  res.json({ success: true });
 });
 
 /* ================================
