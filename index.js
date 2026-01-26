@@ -110,51 +110,54 @@ app.get("/register", (req, res) => {
   <title>Register Donor</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f7f7f7;
+      font-family: Arial;
+      background: #f5f5f5;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
+      height: 100vh;
     }
-    .box {
-      background: #fff;
+    .card {
+      background: white;
       padding: 30px;
-      border-radius: 8px;
-      width: 420px;
+      width: 350px;
+      border-radius: 10px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.1);
       text-align: center;
     }
     input, select {
       width: 100%;
-      padding: 12px;
-      margin: 12px 0;
-      font-size: 16px;
+      padding: 10px;
+      margin: 10px 0;
     }
     button {
       width: 100%;
-      padding: 14px;
-      font-size: 18px;
+      padding: 12px;
       background: #e63946;
-      color: #fff;
+      color: white;
       border: none;
       cursor: pointer;
+      font-size: 16px;
     }
-    .msg {
-      margin-top: 20px;
+    .error {
+      color: red;
+      margin-top: 10px;
+    }
+    .success {
+      color: green;
+      margin-top: 10px;
       font-weight: bold;
     }
   </style>
 </head>
+
 <body>
+  <div class="card">
+    <h2>🩸 Register as Donor</h2>
 
-<div class="box" id="box">
-  <h2>🩸 Register as a Donor</h2>
-
-  <form id="donorForm">
-    <input name="name" placeholder="Full Name" required />
-
-    <select name="bloodGroup" required>
+    <input id="name" placeholder="Name" />
+    
+    <select id="bloodGroup">
       <option value="">Select Blood Group</option>
       <option>A+</option><option>A-</option>
       <option>B+</option><option>B-</option>
@@ -162,62 +165,64 @@ app.get("/register", (req, res) => {
       <option>O+</option><option>O-</option>
     </select>
 
-    <input name="city" placeholder="City" required />
-    <input name="phone" placeholder="Phone (10 digits)" required />
+    <input id="city" placeholder="City" />
+    <input id="phone" placeholder="Phone (10 digits)" />
 
-    <button type="submit">Submit</button>
-  </form>
+    <button onclick="submitForm()">Submit</button>
 
-  <div class="msg" id="msg"></div>
-</div>
+    <div id="msg"></div>
+  </div>
 
 <script>
-const form = document.getElementById("donorForm");
-const box = document.getElementById("box");
-const msg = document.getElementById("msg");
+async function submitForm() {
+  const name = document.getElementById("name").value.trim();
+  const bloodGroup = document.getElementById("bloodGroup").value;
+  const city = document.getElementById("city").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  const msg = document.getElementById("msg");
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
+  msg.innerHTML = "";
 
-  const data = {
-    name: form.name.value,
-    bloodGroup: form.bloodGroup.value,
-    city: form.city.value,
-    phone: form.phone.value
-  };
+  if (!name || !bloodGroup || !city || !phone) {
+    msg.innerHTML = "<div class='error'>All fields required</div>";
+    return;
+  }
 
-  const res = await fetch("/api/donors", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  });
+  if (phone.length !== 10) {
+    msg.innerHTML = "<div class='error'>Phone must be 10 digits</div>";
+    return;
+  }
 
-  const result = await res.json();
+  try {
+    const res = await fetch("/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, bloodGroup, city, phone })
+    });
 
-  if (result.success) {
+    const data = await res.json();
+
+    if (!res.ok) {
+      msg.innerHTML = "<div class='error'>" + data.error + "</div>";
+      return;
+    }
+
     let seconds = 5;
+    msg.innerHTML = "<div class='success'>Thank you for registering ❤️<br>Redirecting in " + seconds + "s</div>";
 
-    box.innerHTML = \`
-      <h2>✅ Thank You!</h2>
-      <p>You are successfully registered as a blood donor.</p>
-      <p>Redirecting to home page in <b id="timer">5</b> seconds...</p>
-    \`;
-
-    const timer = document.getElementById("timer");
-
-    const interval = setInterval(() => {
+    const timer = setInterval(() => {
       seconds--;
-      timer.innerText = seconds;
+      msg.innerHTML = "<div class='success'>Thank you for registering ❤️<br>Redirecting in " + seconds + "s</div>";
       if (seconds === 0) {
-        clearInterval(interval);
+        clearInterval(timer);
         window.location.href = "/";
       }
     }, 1000);
-  } else {
-    msg.style.color = "red";
-    msg.innerText = "❌ " + result.message;
+
+  } catch (err) {
+    msg.innerHTML = "<div class='error'>Server error</div>";
   }
-});
+}
 </script>
 
 </body>
