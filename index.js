@@ -194,7 +194,7 @@ async function submitForm() {
   }
 
   try {
-    const res = await fetch("/api/register", {
+    const res = await fetch("/api/donors", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, bloodGroup, city, phone })
